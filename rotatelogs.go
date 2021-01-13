@@ -258,13 +258,16 @@ func (rl *RotateLogs) rotate_nolock(filename string) error {
 	defer guard.Run()
 
 	if rl.linkName != "" {
-		tmpLinkName := filename + `_symlink`
-		if err := os.Symlink(filename[strings.LastIndex(filename, string(filepath.Separator))+1:], tmpLinkName); err != nil {
-			return errors.Wrap(err, `failed to create new symlink`)
+		// 先删除软链
+		if _, err := os.Lstat(rl.linkName); err == nil {
+			if err := os.Remove(rl.linkName); err != nil {
+				return errors.Wrap(err, `failed to unlink`)
+			}
 		}
-
-		if err := os.Rename(tmpLinkName, rl.linkName); err != nil {
-			return errors.Wrap(err, `failed to rename new symlink`)
+		// 新建软链
+		idx := strings.LastIndex(filename, string(filepath.Separator))
+		if err := os.Symlink(filename[idx+1:], rl.linkName); err != nil {
+			return errors.Wrap(err, `failed to create new symlink`)
 		}
 	}
 
